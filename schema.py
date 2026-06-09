@@ -22,12 +22,12 @@ class PostBase(BaseModel):
 
 class PostCreate(PostBase):
     published: bool = False
-    user_id = int
+    user_id: int
 
 class PostResponse(PostBase):
     model_config = ConfigDict(from_attributes = True)
     id : int
     date_posted : str 
     published : bool
-    user_id = int
-    author = UserResponse
+    user_id: int
+    author: UserResponse
