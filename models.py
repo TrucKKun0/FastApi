@@ -1,6 +1,6 @@
 from __future__ import annotations
 from datetime import UTC, datetime
-from sqlalchemy import ForeignKey,DateTime,String,Integer,Text
+from sqlalchemy import ForeignKey,DateTime,String,Integer,Text,Boolean
 from sqlalchemy.orm import mapped_column,Mapped,relationship
 
 from database import Base
@@ -31,3 +31,4 @@ class Post(Base):
     user_id : Mapped[int] = mapped_column(ForeignKey("users.id"),nullable=False,index = True)
     date_posted : Mapped[datetime] = mapped_column(DateTime(timezone=True),default=lambda: datetime.now(UTC))
     author : Mapped[User] = relationship(back_populates="posts")
+    published : Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

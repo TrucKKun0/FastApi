@@ -257,6 +257,7 @@ def create_post(post : PostCreate, db: Annotated[Session, Depends(get_db)]):
     new_post = models.Post(
         title = post.title,
         content = post.content,
+        published = post.published,
         user_id = post.user_id
     )
     db.add(new_post)
