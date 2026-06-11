@@ -19,7 +19,7 @@ async def delete_one_post(post_id : int, db: Annotated[AsyncSession, Depends(get
     await db.delete(post)
     await db.commit()
 
-@router.put("/{post_id}/", response_model=PostUpdated)
+@router.put("/{post_id}/", response_model=PostResponse)
 async def update_post_full(post_id : int, db: Annotated[AsyncSession, Depends(get_db)],post_data : PostCreate):
     result = await db.execute(select(models.Post).where(models.Post.id == post_id))
     post = result.scalars().first()
@@ -32,20 +32,30 @@ async def update_post_full(post_id : int, db: Annotated[AsyncSession, Depends(ge
     post.user_id = post_data.user_id
     await db.commit()
     await db.refresh(post)
-    return post
+    # Preload author before returning to avoid async IO during response serialization
+    result = await db.execute(
+        select(models.Post).options(selectinload(models.Post.author)).where(models.Post.id == post.id)
+    )
+    post_with_author = result.scalars().first()
+    return post_with_author
 
-@router.patch("/{post_id}/", response_model=PostUpdated)
+@router.patch("/{post_id}/", response_model=PostResponse)
 async def update_post_partial(post_id : int, db: Annotated[AsyncSession, Depends(get_db)],post_data : PostUpdated):
     result = await db.execute(select(models.Post).where(models.Post.id == post_id))
     post = result.scalars().first()
     if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = "Post not found")
-    update_data = post_data.model_dump(exclude=True)
+    update_data = post_data.model_dump(exclude_none=True)
     for field , value in update_data.items():
         setattr(post,field,value)
     await db.commit()
     await db.refresh(post)
-    return post
+    # Preload author before returning to avoid async IO during response serialization
+    result = await db.execute(
+        select(models.Post).options(selectinload(models.Post.author)).where(models.Post.id == post.id)
+    )
+    post_with_author = result.scalars().first()
+    return post_with_author
 
 @router.post(
         "",
@@ -60,13 +70,17 @@ async def create_post(post : PostCreate, db: Annotated[AsyncSession, Depends(get
     new_post = models.Post(
         title = post.title,
         content = post.content,
-        published = post.published,
         user_id = post.user_id
     )
     db.add(new_post)
     await db.commit()
     await db.refresh(new_post)
-    return new_post
+    # ensure the `author` relationship is loaded to avoid async IO during response serialization
+    result = await db.execute(
+        select(models.Post).options(selectinload(models.Post.author)).where(models.Post.id == new_post.id)
+    )
+    post_with_author = result.scalars().first()
+    return post_with_author
 
 @router.get("/{post_id}/", response_model=PostResponse)
 async def get_one_post(post_id : int, db: Annotated[AsyncSession, Depends(get_db)]):
@@ -78,6 +92,6 @@ async def get_one_post(post_id : int, db: Annotated[AsyncSession, Depends(get_db
 
 @router.get("", response_model=list[PostResponse])
 async def get_posts(db: Annotated[AsyncSession, Depends(get_db)]):
-    result = await db.execute(select(models.Post).options(selectinload(models.Post.author)))
+    result = await db.execute(select(models.Post).options(selectinload(models.Post.author)).order_by(models.Post.date_posted.desc()))
     posts = result.scalars().all()
     return posts

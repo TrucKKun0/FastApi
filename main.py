@@ -15,9 +15,7 @@ from fastapi.exception_handlers import(
     request_validation_exception_handler
 )
 
-from router import post , user
-
-
+from router import post,user
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -27,23 +25,24 @@ async def lifespan(_app: FastAPI):
 
     await engine.dispose()
 app = FastAPI(lifespan=lifespan)
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/media",StaticFiles(directory="media"),name='media')
 templates = Jinja2Templates(directory="templates")
 
 app.include_router(user.router, prefix="/api/user",tags=["user"])
-app.include_router(user.router, prefix="/api/post",tags=["post"])
+app.include_router(post.router, prefix="/api/post",tags=["post"])
 
 @app.get("/", include_in_schema=False)
 @app.get("/posts", include_in_schema=False)
 async def home(request : Request, db: Annotated[AsyncSession, Depends(get_db)]):
-    result = await db.execute(select(models.Post).options(selectinload(models.Post.author)))
+    result = await db.execute(select(models.Post).options(selectinload(models.Post.author)).order_by(models.Post.date_posted.desc()))
     posts = result.scalars().all()
     return templates.TemplateResponse(request, "home.html", {"posts": posts, "title": "Home"})
 
 @app.get("/post/{post_id}", include_in_schema=False)
 async def post_page(request: Request, post_id : int, db: Annotated[AsyncSession, Depends(get_db)]):
-    result = await db.execute(select(models.Post).where(models.Post.id == post_id))
+    result = await db.execute(select(models.Post).options(selectinload(models.Post.author)).where(models.Post.id == post_id))
     post = result.scalars().first()
     if post:
         title = post.title[:50]
@@ -56,12 +55,9 @@ async def get_user_all_posts(request: Request, db: Annotated[AsyncSession, Depen
     user = result.scalars().first()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user not found")
-    result = await db.execute(select(models.Post).where(models.Post.user_id == user_id))
+    result = await db.execute(select(models.Post).where(models.Post.user_id == user_id).order_by(models.Post.date_posted.desc()))
     posts = result.scalars().all()
     return templates.TemplateResponse(request, "home.html", {"posts": posts, "title": f"{user.username}'s Posts"})
-
-
-
 
 @app.exception_handler(starletteHTTPException)
 async def general_http_exception_handler(request : Request, exception : starletteHTTPException):
@@ -83,11 +79,10 @@ async def general_http_exception_handler(request : Request, exception : starlett
         status_code=exception.status_code
     )
 
-
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request : Request,exception : RequestValidationError):
     if request.url.path.startswith("/api"):
-         return await http_exception_handler(request,exception)
+         return await request_validation_exception_handler(request,exception)
     return templates.TemplateResponse(
         request,
         "error.html",

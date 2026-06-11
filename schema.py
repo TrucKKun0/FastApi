@@ -22,20 +22,18 @@ class UserUpdate(UserBase):
 class PostBase(BaseModel):
     title : str = Field(min_length = 1 , max_length = 100)
     content : str = Field(min_length = 5)
-    author : str = Field(min_length = 1, max_length = 50)
-    published : bool = Field(default=False)
+    author : str | None = Field(default=None, min_length = 1, max_length = 50)
 
 class PostCreate(PostBase):
     user_id: int
 
 class PostUpdated(PostBase):
-    content : str = Field(min_length=10,default=None)
-    title : str = Field(min_length=1,max_length=50,default= None)
+    content : str | None = Field(min_length=10,default=None)
+    title : str  | None = Field(min_length=1,max_length=50,default= None)
 
 class PostResponse(PostBase):
     model_config = ConfigDict(from_attributes = True)
     id : int
     date_posted : datetime
-    published : bool
     user_id: int
     author: UserResponse
