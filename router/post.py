@@ -1,5 +1,5 @@
 
-from schema import PostCreate,PostResponse,UserCreate,UserResponse,PostUpdated,UserUpdate
+from schema import PostCreate,PostResponse,UserCreate,PostUpdated,UserUpdate,UserPublic
 from typing import Annotated
 from fastapi import FastAPI, Request , HTTPException,status,Depends,APIRouter
 from sqlalchemy import select
