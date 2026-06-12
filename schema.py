@@ -23,7 +23,6 @@ class Token(BaseModel):
 class UserUpdate(BaseModel):
     username : str | None = Field(default=None)
     email : EmailStr | None = Field(default=None)
-    image_file : str | None = Field(default=None)
 
 
 class PostBase(BaseModel):
