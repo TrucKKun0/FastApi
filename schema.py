@@ -20,23 +20,23 @@ class Token(BaseModel):
     access_token : str
     token_type : str
 
-class UserUpdate(UserBase):
-    username : str | None = Field(default=None,min_length=5 , max_length=100)
-    email : EmailStr | None = Field(default=None,max_length=120)
-    image_file : str | None = Field(default = None,min_length=1,max_length=250)
+class UserUpdate(BaseModel):
+    username : str | None = Field(default=None)
+    email : EmailStr | None = Field(default=None)
+    image_file : str | None = Field(default=None)
 
 
 class PostBase(BaseModel):
     title : str = Field(min_length = 1 , max_length = 100)
     content : str = Field(min_length = 5)
-    author : str | None = Field(default=None, min_length = 1, max_length = 50)
+    author : str | None = Field(default=None)
 
 class PostCreate(PostBase):
-    user_id: int
-
-class PostUpdated(PostBase):
-    content : str | None = Field(min_length=10,default=None)
-    title : str  | None = Field(min_length=1,max_length=50,default= None)
+    pass
+class PostUpdated(BaseModel):
+    title : str | None = Field(default=None)
+    content : str | None = Field(default=None)
+    author : str | None = Field(default=None)
 
 class PostResponse(PostBase):
     model_config = ConfigDict(from_attributes = True)
