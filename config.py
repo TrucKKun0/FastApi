@@ -12,5 +12,13 @@ class Settings(BaseSettings):
     access_token_expires_minutes : int = 30
     max_upload_size_bytes : int = 5 * 1024 * 1024
     post_per_page : int= 10
+    reset_token_expire_minute : int = 60
+    mail_server : str = "localhost"
+    mail_username : str = ""
+    mail_port : int = 587
+    mail_password : SecretStr = SecretStr("")
+    mail_from : str = "noreply@example.com"
+    mail_user_tls : bool = True 
+    front_end_url : str = "http://localhost:8000"
 
 settings = Settings()
