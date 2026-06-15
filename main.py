@@ -5,7 +5,7 @@ from starlette.exceptions import HTTPException as starletteHTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import models
-from sqlalchemy import select
+from sqlalchemy import select,func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from database import Base,engine,get_db
@@ -16,6 +16,7 @@ from fastapi.exception_handlers import(
 )
 
 from router import post,user
+from config import settings
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -36,9 +37,12 @@ app.include_router(post.router, prefix="/api/post",tags=["post"])
 @app.get("/", include_in_schema=False)
 @app.get("/posts", include_in_schema=False)
 async def home(request : Request, db: Annotated[AsyncSession, Depends(get_db)]):
-    result = await db.execute(select(models.Post).options(selectinload(models.Post.author)).order_by(models.Post.date_posted.desc()))
+    count_result = await db.execute(select(func.count()).select_from(models.Post))
+    total = count_result.scalars().first()
+    result = await db.execute(select(models.Post).options(selectinload(models.Post.author)).order_by(models.Post.date_posted.desc()).limit(settings.post_per_page)),
     posts = result.scalars().all()
-    return templates.TemplateResponse(request, "home.html", {"posts": posts, "title": "Home"})
+    has_more= len(posts) < total
+    return templates.TemplateResponse(request, "home.html", {"posts": posts, "title": "Home", "has_more" : has_more,"limit" : settings.post_per_page})
 
 @app.get("/post/{post_id}", include_in_schema=False)
 async def post_page(request: Request, post_id : int, db: Annotated[AsyncSession, Depends(get_db)]):

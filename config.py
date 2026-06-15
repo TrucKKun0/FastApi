@@ -11,5 +11,6 @@ class Settings(BaseSettings):
     algorithm : str = "HS256"
     access_token_expires_minutes : int = 30
     max_upload_size_bytes : int = 5 * 1024 * 1024
+    post_per_page : int= 10
 
 settings = Settings()

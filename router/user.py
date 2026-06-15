@@ -1,7 +1,7 @@
-from schema import PostCreate,PostResponse,UserCreate,UserPrivate,UserPublic,Token,PostUpdated,UserUpdate
+from schema import PostCreate,PostResponse,UserCreate,UserPrivate,UserPublic,Token,PostUpdated,UserUpdate,PaginatedPostResponse
 from typing import Annotated
-from fastapi import FastAPI, Request , HTTPException,status,Depends,APIRouter,UploadFile
-from sqlalchemy import select
+from fastapi import FastAPI, Request , HTTPException,status,Depends,APIRouter,UploadFile,Query
+from sqlalchemy import select,func
 from sqlalchemy.ext.asyncio import AsyncSession
 from PIL import UnidentifiedImageError
 from starlette.concurrency import run_in_threadpool
@@ -11,7 +11,6 @@ import models
 from database import get_db
 from datetime import timedelta
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy import func
 from auth import create_access_token,CurrentUser,hash_password,vefiry_accesstoken,verify_password
 from config import settings
 
@@ -82,12 +81,25 @@ async def get_user(user_id : int, db: Annotated[AsyncSession, Depends(get_db)]):
 
 
 @router.get("/{user_id}/posts", response_model=list[PostResponse])
-async def get_user_posts(user_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
+async def get_user_posts(
+    user_id: int, 
+    db: Annotated[AsyncSession, Depends(get_db)],
+    skip: Annotated[int,Query(ge=0)] = 0,
+    limit : Annotated[int,Query(ge=0,le=100)] = 10
+    ):
+    
     result = await db.execute(select(models.User).where(models.User.id == user_id))
     user = result.scalars().first()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found the user id")
-    result = await db.execute(select(models.Post).options(selectinload(models.Post.author)).where(models.Post.user_id == user_id).order_by(models.Post.date_posted.desc()))
+    count_result = await db.execute(select(func.count()).select_from(models.Post).where(models.Post.user_id == user_id))
+    total = count_result.scalars() or 0
+    result = await db.execute(select(models.Post)
+                              .options(selectinload(models.Post.author))
+                              .where(models.Post.user_id == user_id)
+                              .order_by(models.Post.date_posted.desc())
+                              .offset(skip)
+                              .limit(limit),)
     posts = result.scalars().all()
     return posts
 

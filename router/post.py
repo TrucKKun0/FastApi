@@ -1,14 +1,13 @@
 
-from schema import PostCreate,PostResponse,UserCreate,PostUpdated,UserUpdate,UserPublic
+from schema import PostCreate,PostResponse,UserCreate,PostUpdated,UserUpdate,UserPublic,PaginatedPostResponse
 from typing import Annotated
-from fastapi import FastAPI, Request , HTTPException,status,Depends,APIRouter
-from sqlalchemy import select
+from fastapi import FastAPI, Request , HTTPException,status,Depends,APIRouter,Query
+from sqlalchemy import select,func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 import models
 from database import get_db
 from auth import CurrentUser
-
 
 router = APIRouter()
 
@@ -89,8 +88,26 @@ async def get_one_post(post_id : int, db: Annotated[AsyncSession, Depends(get_db
         return post
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = "Post not found")
 
-@router.get("", response_model=list[PostResponse])
-async def get_posts(db: Annotated[AsyncSession, Depends(get_db)]):
-    result = await db.execute(select(models.Post).options(selectinload(models.Post.author)).order_by(models.Post.date_posted.desc()))
+@router.get("", response_model=PaginatedPostResponse)
+async def get_posts(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    skip : Annotated[int,Query(ge=0)]= 0,
+    limit : Annotated[int,Query(ge=1,le=100)] = 10,                
+    ):
+    count_result = await db.execute(select(func.count()).select_from(models.Post))
+    total = count_result.scalars().first() or 0
+    result = await db.execute(select(models.Post)
+                              .options(selectinload(models.Post.author))
+                              .order_by(models.Post.date_posted.desc())
+                              .offset(skip)
+                              .limit(limit))
     posts = result.scalars().all()
-    return posts
+    has_more = skip + len(posts) < total
+    return PaginatedPostResponse(
+        posts = [PostResponse.model_validate(post) for post in posts],
+        total = total,
+        skip = skip,
+        limit = limit,
+        has_more = has_more
+    )
+
