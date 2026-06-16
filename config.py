@@ -20,5 +20,6 @@ class Settings(BaseSettings):
     mail_from : str = "noreply@example.com"
     mail_user_tls : bool = True 
     front_end_url : str = "http://localhost:8000"
+    database_url : str
 
 settings = Settings()
