@@ -21,5 +21,10 @@ class Settings(BaseSettings):
     mail_user_tls : bool = True 
     front_end_url : str = "http://localhost:8000"
     database_url : str
+    s3_bucket_name : str
+    s3_region : str
+    s3_access_key : SecretStr | None = None
+    s3_secret_access_key : SecretStr | None = None
+    s3_endpoint_url: str | None = None
 
 settings = Settings()
